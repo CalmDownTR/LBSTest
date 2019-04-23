@@ -16,15 +16,14 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clickable="true"
-
             android:visibility="visible">
-
         </com.baidu.mapapi.map.MapView>
 
         <TextView
             android:id="@+id/position_text_view"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:text="1"
             android:visibility="invisible" />
 
     </FrameLayout>
@@ -36,11 +35,25 @@
         android:orientation="horizontal">
 
         <Button
+            android:id="@+id/login_button"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="登录" />
+
+        <Button
             android:id="@+id/information_button"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:text="经纬度" />
+
+        <Button
+            android:id="@+id/mapType_button_"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="地图类型" />
 
         <Button
             android:id="@+id/trace_button"

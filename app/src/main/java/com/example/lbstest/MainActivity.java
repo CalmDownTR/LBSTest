@@ -81,6 +81,15 @@ public class MainActivity extends AppCompatActivity {
             requrestLocation();
         }
 
+        //登录
+        Button loginButton = (Button) findViewById(R.id.login_button);
+        loginButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+            }
+        });
+
         //经纬度显示切换
         Button inforButton = (Button) findViewById(R.id.information_button);
         inforButton.setOnClickListener(new View.OnClickListener() {
@@ -90,6 +99,19 @@ public class MainActivity extends AppCompatActivity {
                     positionText.setVisibility(View.VISIBLE);
                 }else {
                     positionText.setVisibility(View.INVISIBLE);
+                }
+            }
+        });
+
+        //地图类型切换
+        Button mapTypeButton = (Button) findViewById(R.id.mapType_button_);
+        mapTypeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (baiduMap.getMapType() == BaiduMap.MAP_TYPE_NORMAL){
+                    baiduMap.setMapType(BaiduMap.MAP_TYPE_SATELLITE);
+                }else {
+                    baiduMap.setMapType(BaiduMap.MAP_TYPE_NORMAL);
                 }
             }
         });
