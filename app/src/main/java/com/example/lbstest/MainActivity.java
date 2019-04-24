@@ -1,7 +1,9 @@
 package com.example.lbstest;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.LocationListener;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -22,10 +24,15 @@ import com.baidu.location.LocationClient;
 import com.baidu.location.LocationClientOption;
 import com.baidu.mapapi.SDKInitializer;
 import com.baidu.mapapi.map.BaiduMap;
+import com.baidu.mapapi.map.BitmapDescriptor;
 import com.baidu.mapapi.map.MapStatusUpdate;
 import com.baidu.mapapi.map.MapStatusUpdateFactory;
 import com.baidu.mapapi.map.MapView;
 import com.baidu.mapapi.map.MyLocationData;
+import com.baidu.mapapi.map.Overlay;
+import com.baidu.mapapi.map.OverlayOptions;
+import com.baidu.mapapi.map.PolygonOptions;
+import com.baidu.mapapi.map.PolylineOptions;
 import com.baidu.mapapi.model.LatLng;
 
 import java.util.ArrayList;
@@ -45,16 +52,40 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean isFirstLocate = true;
 
+    private static boolean isLogin = false;//登录成功标志位
+
     private char traceSwitch = 0;//追踪轨迹按键
 
     private boolean isTrace = false;//追踪轨迹标志位
 
-    List<LatLng> points = new ArrayList<LatLng>();//追踪轨迹-坐标队列
+    List<LatLng> points ;//追踪轨迹-坐标队列
+
+    private Button loginButton;
+    private List<String> permissionList;
+    private Button inforButton;
+    private Button mapTypeButton;
+    private Button traceButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        initView();
+    }
 
+    //画线
+    private void setLine(List<LatLng> points) {
+
+        OverlayOptions mOverlayOptions = new PolylineOptions()
+                .width(10)
+                .color(0xAAFF0000)
+                .points(points);
+        Overlay overlay = baiduMap.addOverlay(mOverlayOptions);
+    }
+
+
+
+    private void initView() {
+        points=new ArrayList<>();
         mLocationClient = new LocationClient(getApplicationContext());
         mLocationClient.registerLocationListener(new MyLocationListener());
         SDKInitializer.initialize(getApplicationContext());
@@ -64,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
         baiduMap.setMyLocationEnabled(true);
         positionText = (TextView) findViewById(R.id.position_text_view);
 
-        List<String> permissionList = new ArrayList<>();
+        permissionList = new ArrayList<>();
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED){
             permissionList.add(Manifest.permission.ACCESS_FINE_LOCATION);
         }
@@ -82,16 +113,19 @@ public class MainActivity extends AppCompatActivity {
         }
 
         //登录
-        Button loginButton = (Button) findViewById(R.id.login_button);
+        loginButton = (Button) findViewById(R.id.login_button);
         loginButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                if (isLogin == false){
+                    Intent intent = new Intent(MainActivity.this,LoginActivity.class);
+                    startActivity(intent);
+                }
             }
         });
 
         //经纬度显示切换
-        Button inforButton = (Button) findViewById(R.id.information_button);
+        inforButton = (Button) findViewById(R.id.information_button);
         inforButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -104,7 +138,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         //地图类型切换
-        Button mapTypeButton = (Button) findViewById(R.id.mapType_button_);
+        mapTypeButton = (Button) findViewById(R.id.mapType_button_);
         mapTypeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -117,22 +151,26 @@ public class MainActivity extends AppCompatActivity {
         });
 
         //轨迹追踪按键
-        final Button traceButton = (Button) findViewById(R.id.trace_button);
+        traceButton = (Button) findViewById(R.id.trace_button);
         traceButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 switch (traceSwitch){
                     case 0:
+                        //开始追踪
                         isTrace = true;
                         traceSwitch = 1;
                         traceButton.setText("结束追踪");
                         break;
                     case 1:
+                        //结束追踪
                         isTrace = false;
                         traceSwitch = 2;
                         traceButton.setText("清除轨迹");
+                        setLine(points);
                         break;
                     case 2:
+                        //清楚轨迹
                         traceSwitch = 0;
                         traceButton.setText("开始追踪");
                         break;
@@ -140,8 +178,18 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+    }
 
+    public  static void setIsLogin(){
+        if (isLogin){
+            isLogin = false;
+        }else {
+            isLogin = true;
+        }
+    }
 
+    public static boolean getIsLogin(){
+        return isLogin;
     }
 
     private void navigateTo(BDLocation location){
@@ -169,7 +217,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void initLocation(){
         LocationClientOption option = new LocationClientOption();
-        option.setLocationMode(LocationClientOption.LocationMode.Device_Sensors);//定位模式
+        option.setLocationMode(LocationClientOption.LocationMode.Hight_Accuracy);//定位模式
         option.setOpenGps(true);//GPS开关
         option.setScanSpan(5000);//扫描间隔
         option.setIsNeedAddress(true);//地理信息开关
@@ -180,6 +228,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         mapView.onResume();
+        if (isLogin){
+            loginButton.setText("已登录");
+        }
     }
 
     @Override
@@ -222,28 +273,41 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onReceiveLocation(BDLocation bdLocation) {
+            Log.d("监听器打印","监听开始");
+
+
+             if (isTrace) {
+                 double latitude = bdLocation.getLatitude();
+                 double longitude = bdLocation.getLongitude();
+                 LatLng latLng = new LatLng(latitude, longitude);
+                 points.add(latLng);
+                 Log.d("监听器打印", "精度" + latitude);
+                 Log.d("监听器打印", "纬度" + longitude);
+             }
+
 
             StringBuilder currentPosition = new StringBuilder();
-            currentPosition.append("纬度: ").append(bdLocation.getLatitude()).append("\n");
-            currentPosition.append("经线: ").append(bdLocation.getLongitude()).append("\n");
-            currentPosition.append("国家: ").append(bdLocation.getCountry()).append("\n");
-            currentPosition.append("省: ").append(bdLocation.getProvince()).append("\n");
-            currentPosition.append("市: ").append(bdLocation.getCity()).append("\n");
-            currentPosition.append("区: ").append(bdLocation.getDistrict()).append("\n");
-            currentPosition.append("街道: ").append(bdLocation.getStreet()).append("\n");
-            currentPosition.append("定位方式: ");
-            if (bdLocation.getLocType() == BDLocation.TypeGpsLocation){
-                currentPosition.append("GPS");
-            }else if (bdLocation.getLocType() == BDLocation.TypeNetWorkLocation){
-                currentPosition.append("网络");
-            }
-            positionText.setText(currentPosition);
+                currentPosition.append("纬度: ").append(bdLocation.getLatitude()).append("\n");
+                currentPosition.append("经线: ").append(bdLocation.getLongitude()).append("\n");
+                currentPosition.append("国家: ").append(bdLocation.getCountry()).append("\n");
+                currentPosition.append("省: ").append(bdLocation.getProvince()).append("\n");
+                currentPosition.append("市: ").append(bdLocation.getCity()).append("\n");
+                currentPosition.append("区: ").append(bdLocation.getDistrict()).append("\n");
+                currentPosition.append("街道: ").append(bdLocation.getStreet()).append("\n");
+                currentPosition.append("定位方式: ");
+                if (bdLocation.getLocType() == BDLocation.TypeGpsLocation) {
+                    currentPosition.append("GPS");
+                } else if (bdLocation.getLocType() == BDLocation.TypeNetWorkLocation) {
+                    currentPosition.append("网络");
+                }
+                positionText.setText(currentPosition);
 
-            if (bdLocation.getLocType() == BDLocation.TypeGpsLocation || bdLocation.getLocType() == BDLocation.TypeNetWorkLocation) {
-                navigateTo(bdLocation);
-            }else {
-                Toast.makeText(getApplicationContext(),"网络通信出错",Toast.LENGTH_SHORT).show();
-            }
+                if (bdLocation.getLocType() == BDLocation.TypeGpsLocation || bdLocation.getLocType() == BDLocation.TypeNetWorkLocation) {
+                    navigateTo(bdLocation);
+                } else {
+                    Toast.makeText(getApplicationContext(), "网络通信出错", Toast.LENGTH_SHORT).show();
+                }
+
 
 
         }
